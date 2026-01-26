@@ -69,6 +69,10 @@ async def register_subscription_pef_af(af_id: str, sub_req: MonitoringEventSubsc
             #fetched_event_report = transform_document_to_event_report(document_result)
             fetched_event_report = await fetch_event_report(db_data_handler,msisdn,1,None, True)
             log.info("Event Report fetched: %s",fetched_event_report)
+
+            if fetched_event_report.locFailureCause is not None:
+                log.error("Location failure found for IMSI %s: %s",msisdn,fetched_event_report.locFailureCause)
+                return fetched_event_report
             
             set_polygon_area = await db_data_handler.fetch_mapping_from_cell_id_to_polygon(fetched_event_report.locationInfo.cellId)
             if set_polygon_area is not None:

@@ -45,18 +45,23 @@ class DockerLogFetcher:
             lines = self.fetch_logs_sdk() if self.use_sdk else self.fetch_logs_cli()
         except Exception as e:
             logger.error(f"[ERROR] Failed to fetch logs: {e}")
-            return []
+            #return []
+            return
 
         logs = load_logs(lines)
 
         self.last_fetch_time = now
-        return [l for _, l in logs]
+        for _, log_line in logs:
+            yield log_line
+        #return [l for _, l in logs]
 
     def run(self, handler_fn):
         logger.info(f"[INFO] Watching container '{self.container_name}' logs every {self.poll_interval}s...")
         while True:
-            logs = self.fetch_logs()
-            if logs:
-                handler_fn(logs)
+            # logs = self.fetch_logs()
+            # if logs:
+            #     handler_fn(logs)
+            for log_bytes in self.fetch_logs():
+                handler_fn(log_bytes)
             time.sleep(self.poll_interval)
 

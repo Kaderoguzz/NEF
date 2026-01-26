@@ -58,6 +58,7 @@ async def verify_token(public_key: bytes, alg: str, credentials: HTTPAuthorizati
             ) from exc
         except JWTError as exc:
             logger.error("JWT Verification Error: %s", exc)
+            logger.error("JWT ERROR is %s",str(exc))
             if "nbf" in str(exc):
                 logger.error("Token not valid yet")
                 logger.info("Waiting for token to become valid...")

@@ -19,7 +19,8 @@ if PROJECT_API_NAME is None or PROJECT_API_NAME == "":
 else:
     API_URL = f"https://{PROVIDER_API_HOST}:{PROVIDER_API_PORT}/3gpp-monitoring-event-{PROJECT_API_NAME}/v1"
     api_name_with_suffix = f"-{PROJECT_API_NAME}.json"
-    PROVIDER_API_DESC_FILE = PROVIDER_API_DESC_FILE.replace(".json",api_name_with_suffix) 
+    PROVIDER_API_DESC_FILE = PROVIDER_API_DESC_FILE.replace(".json",api_name_with_suffix)
+#API_URL = f"https://{PROVIDER_API_HOST}:{PROVIDER_API_PORT}/3gpp-monitoring-event/v1"
 #API_URL = f"https://{API_HOST}:{API_PORT}/provider-app/v1"
 
 def onboard_provider() -> None:

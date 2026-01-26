@@ -1,8 +1,10 @@
 import time
 import re
 import json
+from datetime import datetime
 from pymongo import MongoClient
 
+from core_crowler.utils.log_fetcher_helper import clean_ansi_codes
 from core_crowler.utils.logger import setup_logger
 from core_crowler.middleware.o5gs import O5GSMiddleware
 
@@ -16,64 +18,136 @@ KEYS = [
 ]
 
 class LogParser:
-    def __init__(self, mongo_uri="mongodb://localhost:27017", db_name="amf_logs", collection_name="ue_events"):
-        self.event_history = []
+    def __init__(self, mongo_uri="mongodb://localhost:27017",
+                 db_name="amf_logs",
+                 collection_name="ue_events"):
 
+        self.in_json = False
+        self.json_buffer = []
         try:
-            self.mongo_client = MongoClient(mongo_uri)
-            self.mongo_db = self.mongo_client[db_name]
-            self.mongo_collection = self.mongo_db[collection_name]
-            logger.info("[MONGODB] Connected to MongoDB")
+          self.mongo_client = MongoClient(mongo_uri)
+          self.mongo_db = self.mongo_client[db_name]
+          self.mongo_collection = self.mongo_db[collection_name]
+          logger.info("[MONGODB] Connected to MongoDB")
         except Exception as e:
             logger.error(f"[MONGODB] Failed to connect: {e}")
             self.mongo_collection = None
 
-        # Regex to match a complete JSON object in a line
-        self.json_pattern = re.compile(r'(\{.*\})', re.DOTALL)
+        self.mdlw = O5GSMiddleware(mongo_uri, db_name)
 
-        self.mdlw = O5GSMiddleware(mongo_uri=mongo_uri, db_name=db_name)
+    def process_line(self, raw: bytes) -> None:
+        raw = clean_ansi_codes(raw)
+        line = raw.decode("utf-8", errors="replace").strip()
 
-    def process_line(self, line):
-        line = line.strip()
-
-        # Attempt to extract JSON from the line
-        match = self.json_pattern.search(line)
-        if match:
-            json_str = match.group(1)
-            try:
-                json_data = json.loads(json_str)
-
-                # Check if all required keys are present
-                missing_keys = [key for key in KEYS if key not in json_data]
-                if missing_keys:
-                    return    
-                self.handle_registration_json(json_data)
-            except json.JSONDecodeError:
-                pass
+        if "Content-Type: application/json" in line:
+            self.in_json = True
+            self.json_buffer = []
             return
 
-    def handle_registration_json(self, json_data):
-        supi = json_data.get("supi")
+        if self.in_json:
+            if line.startswith("--="):
+                self._flush_json()
+                self.in_json = False
+                self.json_buffer = []
+                return
+
+            self.json_buffer.append(line)
+
+    def _flush_json(self) -> None:
+        try:
+            data = json.loads("\n".join(self.json_buffer))
+            if any(k not in data for k in KEYS):
+                return
+            self._handle_registration(data)
+        except json.JSONDecodeError:
+            logger.warning("Invalid JSON block skipped")
+
+    def _handle_registration(self, data) -> None:
+        supi = data.get("supi")
         if not supi:
             return
 
         imsi = supi.replace("imsi-", "")
 
-        event = {
-            "_id": imsi,
-            "amf_info": json_data
-        }
+        new_ts = datetime.fromisoformat(
+            data["ueLocation"]["nrLocation"]["ueLocationTimestamp"].replace("Z", "+00:00")
+        )
 
-        #self.event_history.append(event)
+        existing = self.mongo_collection.find_one({"_id": imsi})
+        if existing:
+            old_ts = datetime.fromisoformat(
+                existing["amf_info"]["ueLocation"]["nrLocation"]["ueLocationTimestamp"].replace("Z", "+00:00")
+            )
+            if new_ts <= old_ts:
+                logger.info("The data in mongo is more recent for IMSI %s."
+                            "\nExisted timestamp is %s while timestamp_to_insert is %s", imsi, old_ts, new_ts)
+                return  # stale
 
-        if self.mongo_collection is not None:
-            try:
-                self.mongo_collection.replace_one({"_id": imsi}, event, upsert=True)
-                logger.info(f"[MONGODB] Stored registration for IMSI: {imsi}")
-                logger.info(json.dumps(event, indent=4))
-                self.mdlw.write_location_info(event)
-            except Exception as e:
-                logger.error(f"[MONGODB] Failed to insert registration: {e}")
+        event = {"_id": imsi, "amf_info": data}
+        self.mongo_collection.replace_one({"_id": imsi}, event, upsert=True)
+        logger.info(f"[MONGODB] Stored registration for IMSI: {imsi}")
+        logger.info(json.dumps(event, indent=4))
+        self.mdlw.write_location_info(event)
+
+# class LogParser:
+#     def __init__(self, mongo_uri="mongodb://localhost:27017", db_name="amf_logs", collection_name="ue_events"):
+#         self.event_history = []
+
+#         try:
+#             self.mongo_client = MongoClient(mongo_uri)
+#             self.mongo_db = self.mongo_client[db_name]
+#             self.mongo_collection = self.mongo_db[collection_name]
+#             logger.info("[MONGODB] Connected to MongoDB")
+#         except Exception as e:
+#             logger.error(f"[MONGODB] Failed to connect: {e}")
+#             self.mongo_collection = None
+
+#         # Regex to match a complete JSON object in a line
+#         self.json_pattern = re.compile(r'(\{.*\})', re.DOTALL)
+
+#         self.mdlw = O5GSMiddleware(mongo_uri=mongo_uri, db_name=db_name)
+
+#     def process_line(self, line):
+#         line = line.strip()
+
+#         # Attempt to extract JSON from the line
+#         match = self.json_pattern.search(line)
+#         if match:
+#             json_str = match.group(1)
+#             try:
+#                 json_data = json.loads(json_str)
+
+#                 # Check if all required keys are present
+#                 missing_keys = [key for key in KEYS if key not in json_data]
+#                 if missing_keys:
+#                     return    
+#                 self.handle_registration_json(json_data)
+#             except json.JSONDecodeError:
+#                 pass
+#             return
+
+#     def handle_registration_json(self, json_data):
+#         supi = json_data.get("supi")
+#         if not supi:
+#             return
+
+#         imsi = supi.replace("imsi-", "")
+
+#         event = {
+#             "_id": imsi,
+#             "amf_info": json_data
+#         }
+
+#         #self.event_history.append(event)
+
+#         if self.mongo_collection is not None:
+#             try:
+#                 self.mongo_collection.replace_one({"_id": imsi}, event, upsert=True)
+#                 logger.info(f"[MONGODB] Stored registration for IMSI: {imsi}")
+#                 logger.info(json.dumps(event, indent=4))
+#                 self.mdlw.write_location_info(event)
+#             except Exception as e:
+#                 logger.error(f"[MONGODB] Failed to insert registration: {e}")
 
 
 

@@ -1,4 +1,6 @@
 import os
+
+
 from core_crowler.utils.logger import setup_logger
 from core_crowler.cores.O5GS.location.log_simulator import FileLogSimulator
 from core_crowler.cores.O5GS.location.log_fetching import DockerLogFetcher
@@ -23,9 +25,9 @@ parser = LogParser(
     collection_name="ue_events"
 )
 
-def handle_logs(logs):
-    for log in logs:
-        parser.process_line(log)
+# def handle_logs(logs):
+#     for log in logs:
+#         parser.process_line(log)
 
 if __name__ == "__main__":
     # Logger setup
@@ -36,7 +38,8 @@ if __name__ == "__main__":
             poll_interval=POLL_INTERVAL
         )
         try:
-            simulator.run(handle_logs)
+            #simulator.run(handle_logs)
+            simulator.run(parser.process_line)
         except KeyboardInterrupt:
             logger.info("\n[INTERRUPT] Displaying final event history...")
     else:
@@ -48,6 +51,6 @@ if __name__ == "__main__":
             poll_interval=POLL_INTERVAL
         )
         try:
-            simulator.run_polling_loop(handle_logs)
+            simulator.run_polling_loop(parser.process_line)
         except KeyboardInterrupt:
             logger.info("\n[INTERRUPT] Displaying final event history...")

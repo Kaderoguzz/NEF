@@ -2,21 +2,21 @@
 import re
 from datetime import datetime, timedelta
 
-def clean_ansi_codes(text: str) -> str:
+def clean_ansi_codes(data: bytes) -> bytes:
     """
-    Removes ANSI escape codes from the given text string.
+    Removes ANSI escape codes from the given data bytes.
 
     ANSI escape codes are often used to add color or formatting to terminal output.
     This function strips such codes, returning a plain text version.
 
     Args:
-        text (str): The input string potentially containing ANSI escape codes.
+        data (bytes): The input data potentially containing ANSI escape codes.
 
     Returns:
-        str: The input string with all ANSI escape codes removed.
+        bytes: The input data with all ANSI escape codes removed.
     """
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
+    ansi_escape = re.compile(rb'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', data)
 
 def parse_timestamp(line: str) -> datetime:
     """
@@ -38,6 +38,7 @@ def parse_timestamp(line: str) -> datetime:
     ts_str = match.group(1)
     full_ts_str = f"{datetime.now().year}/{ts_str}"
     return datetime.strptime(full_ts_str, "%Y/%m/%d %H:%M:%S.%f")
+    #return datetime.strptime(ts_str, "%y/%m/%d %H:%M:%S.%f")
 
 def load_logs(input_logs: list[str]) -> list[tuple[datetime, str]]:
     """
