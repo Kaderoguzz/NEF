@@ -33,15 +33,15 @@ undeploy-no-auth:
 	@echo "Stopping and removing Docker Compose services..."
 	$(DOCKER_COMPOSE) -f docker-compose.yaml down
 	@echo "Undeployment complete."
-
+#--build -d
 deploy-auth: conf-ext-network
 	@echo "Auth enabled: running full deployment..."
-	$(DOCKER_COMPOSE) -f docker-compose.yaml -f docker-compose.auth.yaml up --build -d
+	$(DOCKER_COMPOSE) -f docker-compose.yaml -f docker-compose.auth.yaml up -d
 	@echo "Deployment complete (auth enabled)."
-
+#--build -d
 deploy-no-auth:
 	@echo "Auth disabled: running minimal deployment..."
-	$(DOCKER_COMPOSE) -f docker-compose.yaml up --build -d
+	$(DOCKER_COMPOSE) -f docker-compose.yaml up -d
 	@echo "Deployment complete (no auth)."
 
 clean-auth: undeploy-auth remove-ext-network

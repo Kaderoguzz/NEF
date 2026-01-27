@@ -5,7 +5,7 @@ services:
     container_name: mongo
     ports:
       - "27018:27017"
-    restart: no
+    restart: unless-stopped
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh --quiet
       interval: 5s
@@ -21,7 +21,7 @@ services:
       - "8001:8001"
     volumes:
       - ./MonitoringEventAPI/test_server.py:/test_server.py
-    restart: no
+    restart: unless-stopped
     command: ["/bin/sh", "-c", "python test_server.py"]
     networks:
       - nef-network
@@ -32,11 +32,12 @@ services:
       context: ./MonitoringEventAPI
       args:
         AUTH_ENABLED: ${AUTH_ENABLED}
+    image: ghcr.io/front-research-group/nef-monitoring:latest
     container_name: nef
     restart: unless-stopped
     env_file: .env
     ports:
-      - "9999:9999"
+      - "8000:9999" # 9999 for .72
     depends_on:
       mongodb:
         condition: service_healthy
@@ -48,6 +49,7 @@ services:
   core_crowler:
       build:
         context: ./core_crowler
+      image: ghcr.io/front-research-group/core-crowler:latest
       container_name: core_crowler
       restart: unless-stopped
       env_file: .env
