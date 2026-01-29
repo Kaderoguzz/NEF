@@ -1,8 +1,6 @@
 import docker
 import time
-from datetime import datetime
 
-from core_crowler.utils.log_fetcher_helper import load_logs
 from core_crowler.utils.logger import setup_logger
 import subprocess
 
@@ -12,7 +10,6 @@ class DockerLogFetcher:
     def __init__(self, container_name: str, poll_interval: int = 2):
         self.container_name = container_name
         self.poll_interval = poll_interval
-        self.last_fetch_time = datetime.now()
         self.use_sdk = True
 
         if docker:
@@ -26,42 +23,64 @@ class DockerLogFetcher:
         else:
             logger.warning("[WARN] Docker SDK not available. Falling back to CLI.")
 
-    def fetch_logs_sdk(self):
-        logs = self.container.logs(since=int(self.last_fetch_time.timestamp()), stdout=True, stderr=True)
-        lines = logs.decode("utf-8").splitlines()
-        return lines
+    def _stream_logs_sdk(self, on_line_bytes):
+        stream = self.container.logs(
+            stdout=True,
+            stderr=True,
+            follow=True,
+            stream=True,
+            tail=0,
+            timestamps=False
+        )
 
-    def fetch_logs_cli(self):
-        cmd = [
-            "docker", "logs", self.container_name,
-            "--since", self.last_fetch_time.isoformat()
-        ]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return result.stdout.splitlines()
+        buf = b""
+        for chunk in stream:
+            if not chunk:
+                continue
 
-    def fetch_logs(self):
-        now = datetime.now()
+            buf += chunk
+            lines = buf.split(b"\n")
+
+            # keep last partial line (if any)
+            buf = lines.pop()
+
+            for line in lines:
+                on_line_bytes(line + b"\n")
+
+    def _stream_logs_cli(self, on_line_bytes):
+        cmd = ["docker", "logs", "--follow", "--tail", "0", self.container_name]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
         try:
-            lines = self.fetch_logs_sdk() if self.use_sdk else self.fetch_logs_cli()
-        except Exception as e:
-            logger.error(f"[ERROR] Failed to fetch logs: {e}")
-            #return []
-            return
+            for raw in iter(proc.stdout.readline, b""):
+                if raw:
+                    on_line_bytes(raw)
+        finally:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+    def run(self, on_line_bytes):
+        """
+        Runs forever, streaming logs. If the container restarts / connection breaks,
+        we reconnect with a small sleep. Stale protection is handled in LogParser via ueLocationTimestamp.
+        """
+        logger.info("[INFO] Watching container '%s' logs...", self.container_name)
 
-        logs = load_logs(lines)
-
-        self.last_fetch_time = now
-        for _, log_line in logs:
-            yield log_line
-        #return [l for _, l in logs]
-
-    def run(self, handler_fn):
-        logger.info(f"[INFO] Watching container '{self.container_name}' logs every {self.poll_interval}s...")
         while True:
-            # logs = self.fetch_logs()
-            # if logs:
-            #     handler_fn(logs)
-            for log_bytes in self.fetch_logs():
-                handler_fn(log_bytes)
-            time.sleep(self.poll_interval)
+            try:
+                if self.use_sdk:
+                    self._stream_logs_sdk(on_line_bytes)
+                else:
+                    self._stream_logs_cli(on_line_bytes)
 
+            except Exception as e:
+                logger.exception("[WARN] Log stream interrupted: %s. Reconnecting in %ds...", e, self.poll_interval)
+                time.sleep(self.poll_interval)
+
+                if self.use_sdk:
+                    try:
+                        self.container = self.client.containers.get(self.container_name)
+                    except Exception as e2:
+                        logger.warning("[WARN] Failed to re-acquire container: %s", e2)
+                        self.use_sdk = False

@@ -16,7 +16,7 @@ def clean_ansi_codes(data: bytes) -> bytes:
         bytes: The input data with all ANSI escape codes removed.
     """
     ansi_escape = re.compile(rb'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', data)
+    return ansi_escape.sub(b'', data)
 
 def parse_timestamp(line: str) -> datetime:
     """
@@ -38,29 +38,3 @@ def parse_timestamp(line: str) -> datetime:
     ts_str = match.group(1)
     full_ts_str = f"{datetime.now().year}/{ts_str}"
     return datetime.strptime(full_ts_str, "%Y/%m/%d %H:%M:%S.%f")
-    #return datetime.strptime(ts_str, "%y/%m/%d %H:%M:%S.%f")
-
-def load_logs(input_logs: list[str]) -> list[tuple[datetime, str]]:
-    """
-    Processes a list of log lines, cleaning ANSI codes, parsing timestamps, and grouping related log entries.
-
-    Args:
-        input_logs (list[str]): List of raw log lines as strings.
-
-    Returns:
-        list[tuple]: A list of tuples, each containing a parsed timestamp and the corresponding cleaned log line.
-        If a line contains "ueLocation" and follows a timestamped log, it is appended to the previous log entry.
-    """
-    logs = []
-    for line in input_logs:
-        line = clean_ansi_codes(line.strip())
-        if not line or line == '-':
-            continue
-        ts = parse_timestamp(line)
-        if ts:
-            logs.append((ts, line))
-        elif "ueLocation" in line and logs:
-            logs[-1] = (logs[-1][0], f"{logs[-1][1]} {line}")
-        else:
-            continue
-    return logs
