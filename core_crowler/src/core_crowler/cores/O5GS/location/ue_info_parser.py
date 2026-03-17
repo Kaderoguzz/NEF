@@ -147,7 +147,7 @@ class UEInfoParser:
 # '''
     def build_location_info_from_ue(self, ue: UeInfoItem) -> dict[str, Any]:
         return {
-            "imsi": ue.supi.removeprefix("imsi-"),
+            "_id": ue.supi.removeprefix("imsi-"),
             "cellId": ue.location.nr_cgi.cell_id,
             "trackingAreaId": ue.location.nr_tai.tac,
             "plmnId": ue.location.nr_cgi.plmn,
