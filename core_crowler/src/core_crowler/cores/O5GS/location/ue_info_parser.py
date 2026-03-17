@@ -103,10 +103,10 @@ class UeInfoResponse(BaseModel):
     pager: Pager
 
 class UEInfoParser:
-    def __init__(self, connection_url: str, poll_interval: int = 2):
+    def __init__(self, connection_url: str, poll_interval: int = 2, mongo_uri="mongodb://localhost:27017", db_name="amf_logs"):
         self.connection_url = connection_url
         self.poll_interval = poll_interval
-        self.mdlw = O5GSMiddleware("mongodb://localhost:27017", "amf_logs")
+        self.mdlw = O5GSMiddleware(mongo_uri, db_name)
 
 
 

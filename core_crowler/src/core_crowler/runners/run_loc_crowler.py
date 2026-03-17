@@ -60,7 +60,9 @@ if __name__ == "__main__":
     else:
         simulator = UEInfoParser(
             connection_url=AMF_FETCHER_ENDPOINT,
-            poll_interval=POLL_INTERVAL
+            poll_interval=POLL_INTERVAL,
+            mongo_uri=MONGO_URI,
+            db_name=MONGO_DB_NAME
         )
         try:          
             simulator.run()
