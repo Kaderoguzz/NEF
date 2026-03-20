@@ -37,8 +37,17 @@ class O5GSMiddleware():
     def write_location_info_from_amf_endpoint(self,event_data):
         if self.mongo_collection is not None:
             try:
-                self.mongo_collection.replace_one({"_id": event_data["_id"]}, event_data, upsert=True)
-                logger.info(f"[MONGODB] Stored location for IMSI: {event_data['_id']}")
-                logger.info(json.dumps(event_data, indent=4))
+                result = self.mongo_collection.replace_one(
+                {
+                    "_id": event_data["_id"],
+                    "UELocationTimestamp": {"$ne": event_data["UELocationTimestamp"]}  # only update if timestamp changed
+                },
+                event_data,
+                upsert=True)
+                if result.modified_count or result.upserted_id:
+                    logger.info(f"[MONGODB] Stored location for IMSI: {event_data['_id']}")
+                    logger.info(json.dumps(event_data, indent=4))
+                else:
+                    logger.debug(f"[MONGODB] No change for IMSI: {event_data['_id']}, skipping.")
             except Exception as e:
                 logger.error(f"[MONGODB] Failed to insert location: {e}")

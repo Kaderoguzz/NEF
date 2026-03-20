@@ -69,7 +69,9 @@ class AmPolicyFeaturesInfo(BaseModel):
     bits: list[int]
     labels: list[str]
 
-
+class PlmnId(BaseModel):
+    mcc: str 
+    mnc: str 
 class UeInfoItem(BaseModel):
     supi: str
     suci: str | None = None
@@ -108,7 +110,8 @@ class UEInfoParser:
         self.poll_interval = poll_interval
         self.mdlw = O5GSMiddleware(mongo_uri, db_name)
 
-
+    def _parse_plmn(self,plmn: str) -> PlmnId:
+        return PlmnId(mcc=plmn[:3], mnc=plmn[3:])
 
     def fetch_ue_info(self, base_url: str) -> UeInfoResponse:
         url = f"{base_url.rstrip('/')}/ue-info?page=-1"
@@ -148,9 +151,9 @@ class UEInfoParser:
     def build_location_info_from_ue(self, ue: UeInfoItem) -> dict[str, Any]:
         return {
             "_id": ue.supi.removeprefix("imsi-"),
-            "cellId": ue.location.nr_cgi.cell_id,
-            "trackingAreaId": ue.location.nr_tai.tac,
-            "plmnId": ue.location.nr_cgi.plmn,
+            "cellId": str(ue.location.nr_cgi.cell_id),
+            "trackingAreaId": str(ue.location.nr_tai.tac),
+            "plmnId": self._parse_plmn(ue.location.nr_cgi.plmn).model_dump(),
             "routingAreaId": None,
             "enodeBId": None,
             "twanId": None,
