@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from typing import Any
+
+import time
 import requests
 from pydantic import BaseModel, Field
-import time
 
 from core_crowler.utils.logger import setup_logger
 from core_crowler.utils.log_fetcher_helper import format_timestamp
@@ -18,10 +19,11 @@ class Snssai(BaseModel):
 
 class GnbInfo(BaseModel):
     ostream_id: int
-    amf_ue_ngap_id: int
-    ran_ue_ngap_id: int
-    gnb_id: int
-    cell_id: int
+    status: str | None = None
+    amf_ue_ngap_id: int | None = None
+    ran_ue_ngap_id: int | None = None
+    gnb_id: int | None = None
+    cell_id: int | None = None
 
 
 class NrTai(BaseModel):
@@ -166,6 +168,9 @@ class UEInfoParser:
                 ue_response = self.fetch_ue_info(self.connection_url)
                 # ue_index = self.build_ue_index(ue_response)
                 for ue in ue_response.items:
+                    if ue.gnb.status == "not-connected":
+                        logger.info("UE %s is not connected to gNB, skipping location update.", ue.supi)
+                        continue
                     location_info = self.build_location_info_from_ue(ue)
                     self.mdlw.write_location_info_from_amf_endpoint(location_info)
             except Exception as e:

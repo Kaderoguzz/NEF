@@ -1,6 +1,7 @@
 import json
 from pymongo import MongoClient
 from core_crowler.utils.logger import setup_logger
+from datetime import datetime
 
 logger = setup_logger(logger_name="o5gs_middleware")
 
@@ -37,17 +38,20 @@ class O5GSMiddleware():
     def write_location_info_from_amf_endpoint(self,event_data):
         if self.mongo_collection is not None:
             try:
-                result = self.mongo_collection.replace_one(
-                {
-                    "_id": event_data["_id"],
-                    "UELocationTimestamp": {"$ne": event_data["UELocationTimestamp"]}  # only update if timestamp changed
-                },
-                event_data,
-                upsert=True)
-                if result.modified_count or result.upserted_id:
-                    logger.info(f"[MONGODB] Stored location for IMSI: {event_data['_id']}")
-                    logger.info(json.dumps(event_data, indent=4))
-                else:
-                    logger.debug(f"[MONGODB] No change for IMSI: {event_data['_id']}, skipping.")
+                new_ts = datetime.fromisoformat(
+                        event_data["UELocationTimestamp"].replace("Z", "+00:00")
+                )
+                existing = self.mongo_collection.find_one({"_id": event_data["_id"]})
+                if existing:
+                    old_ts = datetime.fromisoformat(
+                        existing["UELocationTimestamp"].replace("Z", "+00:00")
+                    )
+                    if new_ts <= old_ts:
+                        logger.info("The data in mongo is more recent for IMSI %s."
+                                    "\nExisted timestamp is %s while timestamp_to_insert is %s", event_data["_id"], old_ts, new_ts)
+                        return  # stale
+                self.mongo_collection.replace_one({"_id": event_data["_id"]}, event_data, upsert=True)
+                logger.info(f"[MONGODB] Stored location for IMSI: {event_data['_id']}")
+                logger.info(json.dumps(event_data, indent=4))
             except Exception as e:
                 logger.error(f"[MONGODB] Failed to insert location: {e}")
