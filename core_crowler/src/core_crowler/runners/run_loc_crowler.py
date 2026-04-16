@@ -16,8 +16,9 @@ MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "amf_logs")
 
 FILE_FETCHER_ENABLED = os.getenv("FILE_FETCHER_ENABLED", "false").lower()
 CONTAINER_FETCHER_ENABLED = os.getenv("CONTAINER_FETCHER_ENABLED", "true").lower()
-AMF_FETCHER_ENDPOINT = os.getenv("AMF_FETCHER_ENDPOINT", "amf").lower()
+AMF_FETCHER_ENDPOINT = os.getenv("AMF_FETCHER_ENDPOINT", "amf")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "2"))
+AMARISOFT_SERVER = os.getenv("AMARISOFT_SERVER")
 
 MONGO_URI = f"mongodb://{MONGO_HOST}:{MONGO_PORT}"
 
@@ -62,7 +63,8 @@ if __name__ == "__main__":
             connection_url=AMF_FETCHER_ENDPOINT,
             poll_interval=POLL_INTERVAL,
             mongo_uri=MONGO_URI,
-            db_name=MONGO_DB_NAME
+            db_name=MONGO_DB_NAME,
+            amarisoft_server=AMARISOFT_SERVER,
         )
         try:          
             simulator.run()

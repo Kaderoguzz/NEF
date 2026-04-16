@@ -34,6 +34,18 @@ class O5GSMiddleware():
                 logger.info(json.dumps(refined_event, indent=4))
             except Exception as e:
                 logger.error(f"[MONGODB] Failed to insert location: {e}")
+
+    def get_location_info_by_imsis(self, imsis: list[str]) -> dict[str, dict]:
+        # Load the current Mongo location documents keyed by IMSI for correlation updates.
+        if self.mongo_collection is None or not imsis:
+            return {}
+
+        try:
+            docs = self.mongo_collection.find({"_id": {"$in": imsis}})
+            return {doc["_id"]: doc for doc in docs}
+        except Exception as e:
+            logger.error(f"[MONGODB] Failed to read locations: {e}")
+            return {}
     
     def write_location_info_from_amf_endpoint(self,event_data):
         if self.mongo_collection is not None:
