@@ -196,6 +196,7 @@ class UEInfoParser:
         # Persist the baseline ue-info location so new UEs exist in Mongo before Amarisoft enrichment.
         for ue in eligible_ues:
             logger.info("UE %s has internet PDU session, processing location update.", ue.supi)
+            logger.info("The ue info is: %s", ue)
             location_info = self.build_location_info_from_ue(ue)
             self.mdlw.write_location_info_from_amf_endpoint(location_info)
 

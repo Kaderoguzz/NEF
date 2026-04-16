@@ -75,19 +75,19 @@ class AmarisoftClient:
             async with websockets.connect(uri, origin="Test", open_timeout=connect_timeout) as ws:
                 # Amarisoft example receives the initial "ready" first.
                 ready_raw = await self._recv_with_timeout(ws, recv_timeout, "initial ready message")
-                logger.debug("Amarisoft ready message: %s", ready_raw)
+                logger.info("Amarisoft ready message: %s", ready_raw)
 
                 payload = {"message": "ue_get"}
                 if stats:
                     payload["stats"] = True
 
                 msg = json.dumps(payload)
-                logger.debug("Sending Amarisoft ue_get payload: %s", msg)
+                logger.info("Sending Amarisoft ue_get payload: %s", msg)
                 await asyncio.wait_for(ws.send(msg), timeout=recv_timeout)
 
                 while True:
                     raw = await self._recv_with_timeout(ws, recv_timeout, "ue_get response")
-                    logger.debug("Received Amarisoft websocket message: %s", raw)
+                    logger.info("Received Amarisoft websocket message: %s", raw)
                     try:
                         data = json.loads(raw)
                     except json.JSONDecodeError as exc:
