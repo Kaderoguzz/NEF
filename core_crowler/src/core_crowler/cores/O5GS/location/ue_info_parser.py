@@ -231,6 +231,7 @@ class UEInfoParser:
             logger.exception("Amarisoft enrichment failed; baseline ue-info data remains persisted: %s", exc)
 
     def run(self):
+        logger.info("Starting location watcher cycles with ue-info polling every %ds", self.poll_interval)
         while True:
             try:
                 self.process_location_cycle()
