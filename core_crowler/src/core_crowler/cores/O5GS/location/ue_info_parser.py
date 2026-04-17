@@ -210,6 +210,8 @@ class UEInfoParser:
         if not existing_docs_by_imsi:
             logger.info("No existing Mongo location documents found for Amarisoft correlation.")
             return
+        
+        logger.info("Fetched the following existing Mongo location documents for Amarisoft correlation: %s", existing_docs_by_imsi)
 
         amari_client = AmarisoftClient(self.amarisoft_server)
         amari_response = asyncio.run(amari_client.ue_get(stats=False))
