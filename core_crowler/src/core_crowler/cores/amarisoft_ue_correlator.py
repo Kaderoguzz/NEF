@@ -110,7 +110,8 @@ class AmarisoftUECorrelator:
                     ran_ue_id,
                 )
                 continue
-
+            logger.info("Amarisoft UE (amf_ue_id=%s, ran_ue_id=%s) correlated to IMSI %s",
+                        amf_ue_id, ran_ue_id, correlated_mongo_imsi_id)
             existing_doc = existing_docs_by_imsi.get(correlated_mongo_imsi_id)
             if not existing_doc:
                 logger.info("No existing Mongo document found for IMSI %s", correlated_mongo_imsi_id)
@@ -122,6 +123,7 @@ class AmarisoftUECorrelator:
                 amari_ue=amari_ue,
                 utc=utc,
             )
+            logger.info("Built updated Mongo document for IMSI %s: %s", correlated_mongo_imsi_id, updated_doc)
             if updated_doc is not None:
                 updates.append(updated_doc)
 
