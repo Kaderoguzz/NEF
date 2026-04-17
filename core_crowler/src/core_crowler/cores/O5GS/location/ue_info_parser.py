@@ -192,46 +192,47 @@ class UEInfoParser:
             "UELocationTimestamp": format_timestamp(ue.location.timestamp)
         }
 
-    def persist_ue_info_locations(self, eligible_ues: list[UeInfoItem]) -> None:
-        # Persist the baseline ue-info location so new UEs exist in Mongo before Amarisoft enrichment.
-        for ue in eligible_ues:
-            logger.info("UE %s has internet PDU session, processing location update.", ue.supi)
-            logger.info("The ue info is: %s", ue)
-            location_info = self.build_location_info_from_ue(ue)
-            self.mdlw.write_location_info_from_amf_endpoint(location_info)
+    def build_location_docs_by_imsi(self, eligible_ues: list[UeInfoItem]) -> dict[str, dict[str, Any]]:
+        return {
+            ue.supi.removeprefix("imsi-"): self.build_location_info_from_ue(ue)
+            for ue in eligible_ues
+        }
 
-    def persist_amarisoft_locations(self, eligible_ues: list[UeInfoItem]) -> None:
-        # Correlate the already-filtered ue-info list with Amarisoft and overwrite with newer cell/timestamp.
-        if self.amari_correlator is None or not eligible_ues:
-            return
+    def persist_location_docs(self, location_docs: list[dict[str, Any]]) -> None:
+        for location_doc in location_docs:
+            self.mdlw.write_location_info_from_amf_endpoint(location_doc)
 
-        eligible_imsis = [ue.supi.removeprefix("imsi-") for ue in eligible_ues]
-        existing_docs_by_imsi = self.amari_correlator.mdlw.get_location_info_by_imsis(eligible_imsis)
-        if not existing_docs_by_imsi:
-            logger.info("No existing Mongo location documents found for Amarisoft correlation.")
-            return
-        
-        logger.info("Fetched the following existing Mongo location documents for Amarisoft correlation: %s", existing_docs_by_imsi)
+    def build_final_location_docs(self, eligible_ues: list[UeInfoItem]) -> list[dict[str, Any]]:
+        # Build the baseline location documents in memory, then apply Amarisoft enrichment
+        # before persistence so each successful cycle writes only the final location once.
+        baseline_docs_by_imsi = self.build_location_docs_by_imsi(eligible_ues)
+        if self.amari_correlator is None or not baseline_docs_by_imsi:
+            return list(baseline_docs_by_imsi.values())
 
         amari_client = AmarisoftClient(self.amarisoft_server)
         amari_response = asyncio.run(amari_client.ue_get(stats=False))
-        updates = self.amari_correlator.correlate_and_build_updates(
+        amari_updates = self.amari_correlator.correlate_and_build_updates(
             ue_info_items=eligible_ues,
             amari_response=amari_response,
-            existing_docs_by_imsi=existing_docs_by_imsi,
+            existing_docs_by_imsi=baseline_docs_by_imsi,
         )
-        self.amari_correlator.persist_updates(updates)
+
+        for amari_update in amari_updates:
+            baseline_docs_by_imsi[amari_update["_id"]] = amari_update
+
+        return list(baseline_docs_by_imsi.values())
 
     def process_location_cycle(self) -> None:
-        # Execute one polling cycle: ue-info write first, Amarisoft enrichment second.
+        # Execute one polling cycle: build the best location document first, then persist once.
         ue_response = self.fetch_ue_info(self.connection_url)
         eligible_ues = self.filter_eligible_ues(ue_response)
-        self.persist_ue_info_locations(eligible_ues)
-
         try:
-            self.persist_amarisoft_locations(eligible_ues)
+            location_docs = self.build_final_location_docs(eligible_ues)
         except Exception as exc:
-            logger.exception("Amarisoft enrichment failed; baseline ue-info data remains persisted: %s", exc)
+            logger.exception("Amarisoft enrichment failed; persisting baseline ue-info data: %s", exc)
+            location_docs = list(self.build_location_docs_by_imsi(eligible_ues).values())
+
+        self.persist_location_docs(location_docs)
 
     def run(self):
         logger.info("Starting location watcher cycles with ue-info polling every %ds", self.poll_interval)

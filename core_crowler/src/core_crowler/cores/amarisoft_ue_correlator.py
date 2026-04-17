@@ -59,6 +59,20 @@ class AmarisoftUECorrelator:
         amari_ue: AmarisoftUE,
         utc: float | int,
     ) -> dict[str, Any] | None:
+        amari_timestamp = self._format_utc_timestamp(utc)
+        existing_timestamp = existing_doc.get("UELocationTimestamp")
+        if existing_timestamp is not None:
+            existing_dt = datetime.fromisoformat(existing_timestamp.replace("Z", "+00:00"))
+            amari_dt = datetime.fromisoformat(amari_timestamp.replace("Z", "+00:00"))
+            if amari_dt <= existing_dt:
+                logger.info(
+                    "Existing location data is newer for IMSI %s. Existing timestamp is %s while Amarisoft timestamp is %s",
+                    mongo_id,
+                    existing_dt,
+                    amari_dt,
+                )
+                return None
+
         cells = amari_ue.cells
         if not cells:
             logger.info("No cells found for Amarisoft UE mapped to IMSI %s", mongo_id)
@@ -72,7 +86,7 @@ class AmarisoftUECorrelator:
 
         updated_doc = dict(existing_doc)
         updated_doc["cellId"] = str(cell_id)
-        updated_doc["UELocationTimestamp"] = self._format_utc_timestamp(utc)
+        updated_doc["UELocationTimestamp"] = amari_timestamp
 
         return updated_doc
 
@@ -114,7 +128,7 @@ class AmarisoftUECorrelator:
                         amf_ue_id, ran_ue_id, correlated_mongo_imsi_id)
             existing_doc = existing_docs_by_imsi.get(correlated_mongo_imsi_id)
             if not existing_doc:
-                logger.info("No existing Mongo document found for IMSI %s", correlated_mongo_imsi_id)
+                logger.info("No base location document found for IMSI %s", correlated_mongo_imsi_id)
                 continue
 
             updated_doc = self.build_mongo_update_from_amari(
