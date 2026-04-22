@@ -1,6 +1,6 @@
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 
 def clean_ansi_codes(data: bytes) -> bytes:
     """
@@ -38,3 +38,7 @@ def parse_timestamp(line: str) -> datetime:
     ts_str = match.group(1)
     full_ts_str = f"{datetime.now().year}/{ts_str}"
     return datetime.strptime(full_ts_str, "%Y/%m/%d %H:%M:%S.%f")
+
+def format_timestamp(ts_microseconds: int) -> str:
+    dt = datetime.fromtimestamp(ts_microseconds / 1_000_000, tz=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
