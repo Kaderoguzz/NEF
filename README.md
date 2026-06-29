@@ -218,7 +218,6 @@ Create a python `venv` and install `requirements.txt` to execute the `python scr
 ---
 
 ### Example Get Request - Security Analysis
----
 {
   "msisdn": "810000000000",
   "subscription_id": "c361098b-2632-4b96-b4b7-7297ababb3e0",
@@ -270,8 +269,6 @@ Create a python `venv` and install `requirements.txt` to execute the `python scr
     "subscription_risk": 0
   }
 }
-
----
 ## 🧩 Sequence Flow Diagram
 ```mermaid
 sequenceDiagram
