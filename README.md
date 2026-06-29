@@ -1,3 +1,101 @@
+# Mobility-Aware Anomaly Detection in NEF-Based Location Monitoring
+
+This repository provides a **Security Brain** module for the **3GPP Network Exposure Function (NEF) Monitoring Event API**. The module enhances standard NEF location monitoring by validating the **physical plausibility of user mobility** before location events are exposed to third-party applications.
+
+The implementation is built using **Python**, **FastAPI**, and **MongoDB**, and integrates with the **3GPP CAPIF** architecture without modifying the standardized NEF interfaces.
+
+---
+
+# 🧩 Overview
+
+The Security Brain operates as an additional analysis layer between the **NEF Monitoring Event API** and external applications.
+
+Instead of trusting every reported location update, the module evaluates whether consecutive mobility events are physically plausible using mobility-aware anomaly detection techniques.
+
+For every received location update, the Security Brain:
+
+* Retrieves the subscriber's previous location history.
+* Computes travelled distance using the Haversine formula.
+* Estimates travelling speed.
+* Detects impossible travel events.
+* Checks abnormal subscription/reporting frequency.
+* Computes a composite risk score.
+* Returns an access decision (ALLOW, CHALLENGE, or BLOCK).
+
+The module is fully compatible with the **3GPP Monitoring Event API** and requires no modifications to the standardized NEF interfaces.
+
+---
+
+# ⚙️ Features
+
+## 1. Mobility Plausibility Validation
+
+* Detects impossible travel between consecutive location updates.
+* Computes travelled distance using the Haversine formula.
+* Estimates user velocity.
+* Validates realistic mobility behaviour.
+
+---
+
+## 2. Geo Analyzer
+
+* Detects abnormal cell transitions.
+* Evaluates polygon-based movement consistency.
+* Identifies suspicious location changes.
+
+---
+
+## 3. Subscription Analyzer
+
+* Detects excessive reporting frequency.
+* Identifies suspicious monitoring behaviour.
+* Incorporates reporting behaviour into the overall risk assessment.
+
+---
+
+## 4. Composite Risk Scoring
+
+The Security Brain combines multiple indicators into a single risk score:
+
+* Geographic consistency
+* Mobility plausibility
+* Subscription behaviour
+
+Decision policy:
+
+* **R < 45** → ALLOW
+* **45 ≤ R < 75** → CHALLENGE
+* **R ≥ 75** or **Impossible Travel** → BLOCK
+
+---
+
+## 5. Historical Location Analysis
+
+The module stores previous UE location events in MongoDB and supports:
+
+* Historical mobility analysis
+* Risk score recomputation
+* Anomaly flag generation
+* Location history queries
+
+---
+
+# 🏗️ Architecture
+
+The Security Brain integrates with the standard NEF Monitoring Event API as an additional decision layer.
+
+Workflow:
+
+1. External Application subscribes through CAPIF.
+2. NEF receives Monitoring Event reports.
+3. Security Brain analyses each location update.
+4. MongoDB provides historical location information.
+5. Risk score is computed.
+6. Decision is returned to the application.
+
+The architecture remains fully compliant with **3GPP TS 29.122** and **CAPIF**, while adding mobility-aware anomaly detection without modifying existing NEF APIs.
+
+
 # NEF MonitoringEvent API (3GPP TS 29.122)
 
 This repository provides a **Network Exposure Function (NEF)** implementation for the **MonitoringEvent API** as specified in **3GPP TS 29.122**.  
