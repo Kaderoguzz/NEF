@@ -156,6 +156,7 @@ sequenceDiagram
 
 ---
 ## 🧩 Sequence Flow for Security Module
+```mermaid
 sequenceDiagram
     autonumber
 
