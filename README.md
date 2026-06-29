@@ -179,13 +179,16 @@ This setup allows the NEF to simulate MonitoringEventReports for northbound APIs
 Create a python `venv` and install `requirements.txt` to execute the `python scripts`.
 
 ## 📡 API Summary
+
 ### Base Endpoints
+
 | Method  | Endpoint                                                                   | Description                                                      |
 | ------- | ---------------------------------------------------------------------------| ---------------------------------------------------------------- |
 | `POST`  | `/3gpp-monitoring-event/v1/{scsAsId}/subscriptions`                        | Create a MonitoringEvent subscription (current location)         |
 | `GET`   | `/3gpp-monitoring-event/v1/{scsAsId}/subscriptions/`                       | Read all of the active subscriptions for the AF                  |
 | `GET`   | `/3gpp-monitoring-event/v1/{scsAsId}/subscriptions/{subscriptionId}`       | Read an active subscription for the AF and the subscription Id   |
 | `DELETE`| `/3gpp-monitoring-event/v1/{scsAsId}/subscriptions/{subscriptionId}`       | Deletes an already existing subscription                         |
+| `GET`   | `/3gpp-monitoring-event-envelope/v1/{scsAsId}/subscriptions/{subscriptionId}/location-analysis` | Security Analysis: Analyze UE mobility, detect anomalies, compute risk score |
 
 ### Example Subscription POST Request - CURRENT LOCATION
 ```
@@ -214,6 +217,61 @@ Create a python `venv` and install `requirements.txt` to execute the `python scr
 
 ---
 
+### Example Get Request - Security Analysis
+---
+{
+  "msisdn": "810000000000",
+  "subscription_id": "c361098b-2632-4b96-b4b7-7297ababb3e0",
+  "subscription_active": true,
+  "current_location": {
+    "cellId": "01630060",
+    "location_name": "lat:35.7717, lon:140.2344",
+    "trackingAreaId": "TA-01630060",
+    "plmnId": {
+      "mcc": "440",
+      "mnc": "10"
+    },
+    "coordinates": [
+      { "lon": 140.2201, "lat": 35.7620 },
+      { "lon": 140.2250, "lat": 35.7620 },
+      { "lon": 140.2250, "lat": 35.7670 },
+      { "lon": 140.2201, "lat": 35.7670 }
+    ],
+    "timestamp": "2026-06-29T10:18:35Z"
+  },
+  "location_history": [
+    {
+      "cellId": "01630010",
+      "location_name": "lat:35.7620, lon:140.2201",
+      "trackingAreaId": "TA-01630010",
+      "plmnId": {
+        "mcc": "440",
+        "mnc": "10"
+      },
+      "coordinates": [
+        { "lon": 140.2180, "lat": 35.7600 },
+        { "lon": 140.2222, "lat": 35.7600 },
+        { "lon": 140.2222, "lat": 35.7640 },
+        { "lon": 140.2180, "lat": 35.7640 }
+      ],
+      "timestamp": "2026-06-29T10:05:10Z"
+    }
+  ],
+  "suspicious": false,
+  "risk_score": 8.7,
+  "decision": "ALLOW",
+  "anomalies": [],
+  "message": "Normal mobility pattern detected.",
+  "details": {
+    "distance_km": 1.42,
+    "speed_kmh": 6.35,
+    "geo_risk": 10,
+    "mobility_risk": 12,
+    "subscription_risk": 0
+  }
+}
+
+---
 ## 🧩 Sequence Flow Diagram
 ```mermaid
 sequenceDiagram
