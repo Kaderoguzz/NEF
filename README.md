@@ -155,6 +155,73 @@ sequenceDiagram
 ```
 
 ---
+## 🧩 Sequence Flow for Security Module
+sequenceDiagram
+    autonumber
+
+    participant AF as External App / AF<br/>(CAPIF AF)
+    participant CAPIF as CAPIF Core Function<br/>(CCF / Gateway)
+    participant NEF as NEF Monitoring<br/>Event API
+    participant SB as Security Brain<br/>Module
+    participant DB as MongoDB<br/>(Location Store)
+
+    Note over AF,CAPIF: AF onboarding & authentication
+
+    AF->>CAPIF: AF onboarding & token request
+    CAPIF-->>AF: Access Token (OAuth2/JWT)
+
+    AF->>NEF: POST /subscriptions\n(Bearer Token, UE params)
+
+    CAPIF->>CAPIF: Validate token & AF authorization
+    CAPIF->>NEF: Forward authorized request
+
+    NEF->>DB: Store subscription details
+    DB-->>NEF: OK
+
+    NEF-->>AF: 201 Created\n(Subscription active)
+
+    loop Monitoring Event Reporting
+
+        NEF-->>AF: UE Location Report\n(MonitoringEvent API)
+
+        NEF->>SB: Forward location update\n(cell ID / polygon / timestamp)
+
+        SB->>DB: Fetch previous UE location history
+        DB-->>SB: Location history
+
+        SB->>SB: Geo Analyzer\n(cell change check)
+
+        SB->>SB: Mobility Analyzer\n(Haversine + velocity)
+
+        SB->>SB: Subscription Analyzer\n(frequency check)
+
+        SB->>SB: Compute risk score R
+
+        alt R < 45
+            SB-->>NEF: ALLOW (Low Risk)
+        else 45 ≤ R < 75
+            SB-->>NEF: CHALLENGE
+        else R ≥ 75 or Impossible Travel
+            SB-->>NEF: BLOCK
+        end
+
+        NEF-->>AF: MonitoringEvent Report + Decision
+
+    end
+
+    AF->>NEF: GET /location-analysis\n(msisdn, scsAsId)
+
+    NEF->>DB: Query location history
+    DB-->>NEF: Return stored events
+
+    NEF->>SB: Recompute risk & anomaly flags
+    SB-->>NEF: Risk score + flags
+
+    NEF-->>AF: Analysis response\n(R, decision, flags)
+
+    Note over CAPIF: CAPIF handles authentication/authorization only
+    Note over SB: Security Brain validates physical mobility plausibility
+
 
 ## Contribution
 Contributions are welcome! Please open issues or submit pull requests for improvements.
