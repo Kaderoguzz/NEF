@@ -160,18 +160,18 @@ sequenceDiagram
 sequenceDiagram
     autonumber
 
-    participant AF as External App / AF<br/>(CAPIF AF)
-    participant CAPIF as CAPIF Core Function<br/>(CCF / Gateway)
-    participant NEF as NEF Monitoring<br/>Event API
-    participant SB as Security Brain<br/>Module
-    participant DB as MongoDB<br/>(Location Store)
+    participant AF as External App / AF (CAPIF AF)
+    participant CAPIF as CAPIF Core Function (CCF / Gateway)
+    participant NEF as NEF Monitoring Event API
+    participant SB as Security Brain Module
+    participant DB as MongoDB (Location Store)
 
-    Note over AF,CAPIF: AF onboarding & authentication
+    Note over AF,CAPIF: AF onboarding and authentication
 
     AF->>CAPIF: AF onboarding & token request
     CAPIF-->>AF: Access Token (OAuth2/JWT)
 
-    AF->>NEF: POST /subscriptions\n(Bearer Token, UE params)
+    AF->>NEF: POST /subscriptions\nBearer Token, UE parameters
 
     CAPIF->>CAPIF: Validate token & AF authorization
     CAPIF->>NEF: Forward authorized request
@@ -179,30 +179,27 @@ sequenceDiagram
     NEF->>DB: Store subscription details
     DB-->>NEF: OK
 
-    NEF-->>AF: 201 Created\n(Subscription active)
+    NEF-->>AF: 201 Created\nSubscription active
 
     loop Monitoring Event Reporting
 
-        NEF-->>AF: UE Location Report\n(MonitoringEvent API)
+        NEF-->>AF: UE Location Report\nMonitoringEvent API
 
-        NEF->>SB: Forward location update\n(cell ID / polygon / timestamp)
+        NEF->>SB: Forward location update\nCell ID / Polygon / Timestamp
 
         SB->>DB: Fetch previous UE location history
         DB-->>SB: Location history
 
-        SB->>SB: Geo Analyzer\n(cell change check)
-
-        SB->>SB: Mobility Analyzer\n(Haversine + velocity)
-
-        SB->>SB: Subscription Analyzer\n(frequency check)
-
+        SB->>SB: Geo Analyzer\nCell change check
+        SB->>SB: Mobility Analyzer\nHaversine + velocity
+        SB->>SB: Subscription Analyzer\nFrequency check
         SB->>SB: Compute risk score R
 
         alt R < 45
             SB-->>NEF: ALLOW (Low Risk)
-        else 45 ≤ R < 75
+        else 45 <= R < 75
             SB-->>NEF: CHALLENGE
-        else R ≥ 75 or Impossible Travel
+        else R >= 75 or Impossible Travel
             SB-->>NEF: BLOCK
         end
 
@@ -210,7 +207,7 @@ sequenceDiagram
 
     end
 
-    AF->>NEF: GET /location-analysis\n(msisdn, scsAsId)
+    AF->>NEF: GET /location-analysis\nmsisdn, scsAsId
 
     NEF->>DB: Query location history
     DB-->>NEF: Return stored events
@@ -218,10 +215,11 @@ sequenceDiagram
     NEF->>SB: Recompute risk & anomaly flags
     SB-->>NEF: Risk score + flags
 
-    NEF-->>AF: Analysis response\n(R, decision, flags)
+    NEF-->>AF: Analysis response\nRisk score, decision, flags
 
-    Note over CAPIF: CAPIF handles authentication/authorization only
+    Note over CAPIF: CAPIF handles authentication and authorization only
     Note over SB: Security Brain validates physical mobility plausibility
+```
 
 
 ## Contribution
