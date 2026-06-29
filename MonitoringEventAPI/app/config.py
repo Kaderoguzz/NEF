@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     map_msisdn_imsi_collection_name: str | None
     map_cellId_to_polygon_collection_name: str | None
     auth_enabled: bool = True
-    pub_key_path: str | None = None
+    pub_key_path: str = "./certs/capif_cert_server.pem"
     algorithm: str | None = "RS256"
     project_api_name: str | None = None
 

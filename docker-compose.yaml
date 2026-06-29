@@ -1,13 +1,12 @@
 services:
-  # MongoDB service
   mongodb:
     image: mongo
     container_name: mongo
     ports:
       - "27018:27017"
-    restart: no
+    restart: "no"
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh --quiet"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,12 +20,11 @@ services:
       - "8001:8001"
     volumes:
       - ./MonitoringEventAPI/test_server.py:/test_server.py
-    restart: no
+    restart: "no"
     command: ["/bin/sh", "-c", "python test_server.py"]
     networks:
       - nef-network
 
-  # The NEF service depends on the db and backend services.(Panagiwths kai Andreas)
   nef:
     build:
       context: ./MonitoringEventAPI
@@ -44,28 +42,22 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - nef-network
-      #- shared
 
   core_crowler:
-      build:
-        context: ./core_crowler
-      container_name: core_crowler
-      restart: unless-stopped
-      env_file: .env
-      depends_on:
-        mongodb:
-          condition: service_healthy
-      networks:
-        - nef-network
-      user: root
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-
-volumes:
-  db_data:
+    build:
+      context: ./core_crowler
+    container_name: core_crowler
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - nef-network
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   nef-network:
     driver: bridge
-  # shared:
-  #   external: true

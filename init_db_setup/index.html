@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Japan Mobility Anomaly Map</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script>
+// -----------------------------
+// 1. MAP INIT (Tokyo center)
+// -----------------------------
+var map = L.map('map').setView([35.5, 139.5], 10);
+
+// -----------------------------
+// 2. TILE LAYER
+// -----------------------------
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// -----------------------------
+// 3. MOCK DATA (senin Python output gibi)
+// -----------------------------
+const trajectory = [
+  {lat: 35.501, lon: 139.501, type: "NORMAL"},
+  {lat: 35.505, lon: 139.507, type: "NORMAL"},
+  {lat: 35.512, lon: 139.515, type: "NORMAL"},
+  {lat: 35.520, lon: 139.530, type: "NORMAL"},
+
+  // anomaly jump (impossible travel)
+  {lat: 35.800, lon: 140.200, type: "ANOMALY"},
+
+  // return jump
+  {lat: 35.512, lon: 139.515, type: "ANOMALY"}
+];
+
+// -----------------------------
+// 4. DRAW TRAJECTORY
+// -----------------------------
+let path = [];
+
+trajectory.forEach((p, i) => {
+
+  let color = (p.type === "ANOMALY") ? "red" : "green";
+
+  // marker
+  L.circleMarker([p.lat, p.lon], {
+    radius: (p.type === "ANOMALY") ? 8 : 5,
+    color: color,
+    fillOpacity: 0.8
+  }).addTo(map)
+    .bindPopup(
+      `<b>${p.type}</b><br>Lat: ${p.lat}<br>Lon: ${p.lon}`
+    );
+
+  path.push([p.lat, p.lon]);
+
+});
+
+// -----------------------------
+// 5. NORMAL PATH LINE
+// -----------------------------
+L.polyline(path.slice(0,4), {
+  color: "blue",
+  weight: 3
+}).addTo(map);
+
+// -----------------------------
+// 6. ANOMALY JUMP LINE
+// -----------------------------
+L.polyline([
+  path[3],
+  path[4]
+], {
+  color: "red",
+  weight: 3,
+  dashArray: "8,8"
+}).addTo(map);
+
+// return jump
+L.polyline([
+  path[4],
+  path[5]
+], {
+  color: "red",
+  weight: 3,
+  dashArray: "8,8"
+}).addTo(map);
+
+</script>
+
+</body>
+</html>

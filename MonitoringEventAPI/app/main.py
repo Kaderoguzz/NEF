@@ -1,13 +1,11 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-
 from app.routers import monitoring_event
 from app.dependencies import startup_db_handler, cleanup_db_handler
 from app.config import get_settings
 from app.utils.logger import get_app_logger
 
 settings = get_settings()
-
 logger = get_app_logger()
 logger.info("Starting NEF Monitoring Event API")
 logger.info("Host: %s, Port: %s", settings.host, settings.port)
@@ -23,8 +21,7 @@ logger.info("Auth Enabled: %s", settings.auth_enabled)
 if settings.auth_enabled:
     logger.info(f"Public Key Path: {settings.pub_key_path}")
     logger.info(f"Algorithm: {settings.algorithm}")
-logger.info("Project API Name: %s",settings.project_api_name)
-
+logger.info("Project API Name: %s", settings.project_api_name)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,13 +29,16 @@ async def lifespan(app: FastAPI):
     yield
     await cleanup_db_handler()
 
-
 app = FastAPI(lifespan=lifespan)
 
-if settings.project_api_name is None or settings.project_api_name == "":
-    app.include_router(monitoring_event.router, prefix="/3gpp-monitoring-event/v1")
-else:
-    app.include_router(monitoring_event.router, prefix="/3gpp-monitoring-event-" + settings.project_api_name +"/v1")
+prefix = (
+    "/3gpp-monitoring-event/v1"
+    if (settings.project_api_name is None or settings.project_api_name == "")
+    else "/3gpp-monitoring-event-" + settings.project_api_name + "/v1"
+)
+
+app.include_router(monitoring_event.router, prefix=prefix)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=settings.host, port=settings.port)

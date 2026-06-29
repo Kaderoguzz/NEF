@@ -1,0 +1,229 @@
+{
+  "msisdn": "810000000000",
+  "target_uid": "0",
+  "mcc": "440",
+  "mnc": "10",
+  "origin_lat": 35.5,
+  "origin_lon": 139.5,
+  "grid_size_deg": 0.0044915558749550845,
+  "min_anomaly_km": 30,
+  "generated_at": "2026-06-28T21:35:08.547698Z",
+  "scenarios": [
+    {
+      "step": 1,
+      "label": "Normal Movement #1",
+      "type": "NORMAL",
+      "cellId": "00790086",
+      "x": 79,
+      "y": 86,
+      "lat": 35.88852,
+      "lon": 139.857079,
+      "dist_km": 0.0,
+      "day": 0,
+      "timeslot": 1,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 139.85483291412146,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.8593244699964,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.8593244699964,
+          "lat": 35.89076536112109
+        },
+        {
+          "lon": 139.85483291412146,
+          "lat": 35.89076536112109
+        }
+      ],
+      "dataset": "dataset1",
+      "uid": "0",
+      "suspicious": false,
+      "decision": "ALLOW"
+    },
+    {
+      "step": 2,
+      "label": "Normal Movement #2",
+      "type": "NORMAL",
+      "cellId": "00790086",
+      "x": 79,
+      "y": 86,
+      "lat": 35.88852,
+      "lon": 139.857079,
+      "dist_km": 0.0,
+      "day": 0,
+      "timeslot": 2,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 139.85483291412146,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.8593244699964,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.8593244699964,
+          "lat": 35.89076536112109
+        },
+        {
+          "lon": 139.85483291412146,
+          "lat": 35.89076536112109
+        }
+      ],
+      "dataset": "dataset1",
+      "uid": "0",
+      "suspicious": false,
+      "decision": "ALLOW"
+    },
+    {
+      "step": 3,
+      "label": "Normal Movement #3",
+      "type": "NORMAL",
+      "cellId": "00770086",
+      "x": 77,
+      "y": 86,
+      "lat": 35.88852,
+      "lon": 139.848096,
+      "dist_km": 0.8092,
+      "day": 0,
+      "timeslot": 8,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.89076536112109
+        },
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.89076536112109
+        }
+      ],
+      "dataset": "dataset1",
+      "uid": "0",
+      "suspicious": false,
+      "decision": "ALLOW"
+    },
+    {
+      "step": 4,
+      "label": "Normal Movement #4",
+      "type": "NORMAL",
+      "cellId": "00770086",
+      "x": 77,
+      "y": 86,
+      "lat": 35.88852,
+      "lon": 139.848096,
+      "dist_km": 0.0,
+      "day": 0,
+      "timeslot": 9,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.89076536112109
+        },
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.89076536112109
+        }
+      ],
+      "dataset": "dataset1",
+      "uid": "0",
+      "suspicious": false,
+      "decision": "ALLOW"
+    },
+    {
+      "step": 5,
+      "label": "ANOMALY \u2014 Distant Location (Dataset2)",
+      "type": "ANOMALY",
+      "cellId": "01630060",
+      "x": 163,
+      "y": 60,
+      "lat": 35.771739,
+      "lon": 140.234369,
+      "dist_km": 37.1656,
+      "day": 0,
+      "timeslot": 0,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 140.23212360761767,
+          "lat": 35.76949335249731
+        },
+        {
+          "lon": 140.23661516349262,
+          "lat": 35.76949335249731
+        },
+        {
+          "lon": 140.23661516349262,
+          "lat": 35.77398490837226
+        },
+        {
+          "lon": 140.23212360761767,
+          "lat": 35.77398490837226
+        }
+      ],
+      "dataset": "dataset2",
+      "uid": "0",
+      "suspicious": true,
+      "decision": "BLOCK"
+    },
+    {
+      "step": 6,
+      "label": "Return \u2014 Simultaneous Location",
+      "type": "ANOMALY",
+      "cellId": "00770086",
+      "x": 77,
+      "y": 86,
+      "lat": 35.88852,
+      "lon": 139.848096,
+      "dist_km": 37.1656,
+      "day": 0,
+      "timeslot": 9,
+      "msisdn": "810000000000",
+      "polygon": [
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.886273805246134
+        },
+        {
+          "lon": 139.85034135824648,
+          "lat": 35.89076536112109
+        },
+        {
+          "lon": 139.84584980237153,
+          "lat": 35.89076536112109
+        }
+      ],
+      "dataset": "dataset1+dataset2",
+      "uid": "0",
+      "suspicious": true,
+      "decision": "BLOCK"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE:        setup
+      DOCKER_INFLUXDB_INIT_USERNAME:    admin
+      DOCKER_INFLUXDB_INIT_PASSWORD:    admin1234
+      DOCKER_INFLUXDB_INIT_ORG:         nef
+      DOCKER_INFLUXDB_INIT_BUCKET:      location_events
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: nef-super-secret-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS:         ""
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - influxdb
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  influxdb_data:
+  grafana_data:

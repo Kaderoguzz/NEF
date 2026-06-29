@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YJMob100K — Impossible Travel Detection</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root {
+  --bg:       #0f1117;
+  --surface:  #1a1d27;
+  --surface2: #22263a;
+  --border:   #2e3348;
+  --accent:   #4f8ef7;
+  --danger:   #f05a5a;
+  --ok:       #52c97b;
+  --warn:     #f5a623;
+  --text:     #e4e8f5;
+  --muted:    #7a82a0;
+  --font:     'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 1000;
+}
+header h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; }
+header .sub { font-size: 11px; color: var(--muted); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 9px;
+  font-size: 11px;
+}
+.pill.accent { color: var(--accent); }
+.pill.ok    { color: var(--ok); }
+
+/* ── LAYOUT ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── MAP ── */
+#map { flex: 1; }
+#map-loading {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--muted);
+  font-size: 12px;
+  z-index: 500;
+  pointer-events: none;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 320px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Controls */
+.controls {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-row { display: flex; gap: 6px; }
+button {
+  padding: 5px 13px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-p { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-p:hover { opacity: 0.85; }
+.btn-s { background: var(--surface2); color: var(--text); }
+.btn-s:hover { border-color: var(--accent); }
+.btn-s:disabled { opacity: 0.4; cursor: default; }
+.speed-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--muted);
+}
+input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+
+/* Info box */
+.info-box {
+  margin: 11px 13px;
+  padding: 10px 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11.5px;
+  line-height: 1.75;
+  flex-shrink: 0;
+  min-height: 108px;
+}
+.badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.badge-n { background: rgba(82,201,123,0.15); color: var(--ok);    border: 1px solid rgba(82,201,123,0.3); }
+.badge-a { background: rgba(240,90,90,0.15);  color: var(--danger); border: 1px solid rgba(240,90,90,0.3); }
+.il { color: var(--muted); display: inline-block; width: 64px; }
+
+/* Speed bar */
+.spd-bar { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.spd-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.spd-fill  { height: 100%; border-radius: 2px; transition: width 0.5s, background 0.5s; }
+
+/* Step list */
+.sec-label {
+  padding: 5px 13px 4px;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--muted); text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.step-list {
+  flex: 1; overflow-y: auto;
+  padding: 5px 7px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.step-list::-webkit-scrollbar { width: 3px; }
+.step-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.step-item {
+  padding: 6px 9px;
+  border-radius: 3px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+  font-size: 11px; line-height: 1.5;
+  transition: all 0.2s;
+}
+.step-item b { font-weight: 500; }
+.step-item small { font-size: 10px; opacity: 0.7; display: block; }
+.step-item.active {
+  background: rgba(79,142,247,0.07);
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+.step-item.done-n { border-left-color: var(--ok);    color: rgba(82,201,123,0.65); }
+.step-item.done-a { border-left-color: var(--danger); color: rgba(240,90,90,0.65); }
+
+/* Status bar */
+.statusbar {
+  padding: 5px 13px;
+  font-size: 10px; color: var(--muted);
+  border-top: 1px solid var(--border);
+  display: flex; gap: 14px; flex-shrink: 0;
+  align-items: center;
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 4px; }
+.dot.ok  { background: var(--ok); }
+.dot.err { background: var(--danger); animation: blink 0.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* Leaflet dark overrides */
+.leaflet-popup-content-wrapper {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6) !important;
+  font-family: var(--font) !important;
+  font-size: 11.5px !important;
+}
+.leaflet-popup-content { margin: 10px 13px !important; line-height: 1.7; }
+.leaflet-popup-tip     { background: var(--surface) !important; }
+.leaflet-popup-close-button { color: var(--muted) !important; top: 5px !important; right: 6px !important; }
+.leaflet-container { background: #1b2a38; }
+.pop-title { font-weight: 600; margin-bottom: 5px; }
+.pop-row   { display: flex; justify-content: space-between; gap: 14px; }
+.pop-k     { color: var(--muted); }
+.pop-v     { color: var(--text); font-weight: 500; }
+.pop-v.danger { color: var(--danger); }
+.pop-v.ok     { color: var(--ok); }
+.pop-hr    { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+.pop-block { color: var(--danger); font-weight: 700; font-size: 11px; }
+
+/* Error screen */
+#error-screen {
+  display: none;
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px;
+  font-size: 13px;
+}
+#error-screen h2 { color: var(--danger); font-size: 15px; }
+#error-screen pre { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 12px; font-size: 11px; max-width: 560px; white-space: pre-wrap; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- Error screen (shown if scenarios.json missing) -->
+<div id="error-screen">
+  <h2>⚠ scenarios.json not found</h2>
+  <pre id="error-detail"></pre>
+  <p style="color:var(--muted);font-size:11px">Run <code style="color:var(--accent)">python extract_scenarios.py</code> in the dataset folder, then open this page via a local server:<br>
+  <code style="color:var(--accent)">python -m http.server 8080</code></p>
+</div>
+
+<header>
+  <div>
+    <h1>YJMob100K &mdash; Impossible Travel Detection</h1>
+    <span class="sub">NEF Monitoring Event · Security Brain · 3GPP CAPIF</span>
+  </div>
+  <div class="header-right">
+    <span class="pill accent" id="hdr-msisdn">MSISDN: —</span>
+    <span class="pill ok"    id="hdr-mcc">MCC — / MNC —</span>
+  </div>
+</header>
+
+<div class="main">
+  <div id="map" style="position:relative">
+    <div id="map-loading">Loading map…</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="controls">
+      <div class="btn-row">
+        <button class="btn-p" id="btn-start"  onclick="startSim()">▶ Start</button>
+        <button class="btn-s" id="btn-pause"  onclick="pauseSim()" style="display:none">⏸ Pause</button>
+        <button class="btn-s" id="btn-reset"  onclick="resetSim()">↺ Reset</button>
+      </div>
+      <div class="speed-row">
+        <span>Step delay:</span>
+        <input type="range" id="spd-input" min="400" max="4000" value="1600" step="100"
+               oninput="stepMs=+this.value; document.getElementById('spd-lbl').textContent=(stepMs/1000).toFixed(1)+'s'">
+        <span id="spd-lbl">1.6s</span>
+      </div>
+    </div>
+
+    <div class="info-box" id="info-box">
+      <span style="color:var(--muted)">Press ▶ Start to begin the simulation.</span>
+    </div>
+
+    <div class="sec-label">Trajectory steps</div>
+    <div class="step-list" id="step-list"></div>
+
+    <div class="statusbar">
+      <span><span class="dot" id="db-dot"></span><span id="db-label">Waiting</span></span>
+      <span id="ts-display" style="margin-left:auto"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA LOADING
+// scenarios.json is produced by extract_scenarios.py from the real dataset.
+// This page must be served over http (python -m http.server 8080) because
+// fetch() cannot load local files via file:// protocol.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let SCENARIOS = [];
+let META      = {};
+
+async function loadData() {
+  let data;
+  try {
+    const res = await fetch("scenarios.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    data = await res.json();
+  } catch (err) {
+    showError(err);
+    return false;
+  }
+
+  META      = { msisdn: data.msisdn, mcc: data.mcc, mnc: data.mnc };
+  SCENARIOS = data.scenarios;
+
+  document.getElementById("hdr-msisdn").textContent = `MSISDN: ${META.msisdn}`;
+  document.getElementById("hdr-mcc").textContent    = `MCC ${META.mcc} / MNC ${META.mnc}`;
+  document.getElementById("map-loading").style.display = "none";
+  return true;
+}
+
+function showError(err) {
+  const screen = document.getElementById("error-screen");
+  screen.style.display = "flex";
+  document.getElementById("error-detail").textContent =
+    `Error loading scenarios.json:\n${err.message}\n\n` +
+    `Make sure you:\n` +
+    `  1. ran: python extract_scenarios.py\n` +
+    `  2. started: python -m http.server 8080\n` +
+    `  3. opened:  http://localhost:8080/simulation.html`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LEAFLET MAP
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const map = L.map("map", { zoomControl: true, preferCanvas: false })
+              .setView([35.68, 139.70], 11);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19,
+}).addTo(map);
+
+// Trail polylines — one for normal path, one for anomaly jump
+let trailN = L.polyline([], { color: "#4f8ef7", weight: 2.5, opacity: 0.85, dashArray: "7,4" }).addTo(map);
+let trailA = L.polyline([], { color: "#f05a5a", weight: 2.5, opacity: 0.85, dashArray: "5,3" }).addTo(map);
+
+// Cell polygon overlay (shown for current step)
+let cellPolygon = null;
+
+let activeMarker = null;
+let pastMarkers  = [];
+
+// ── Icon factory ──────────────────────────────────────────────────────────────
+function makeIcon(type, active) {
+  const col  = type === "ANOMALY" ? "#f05a5a" : "#4f8ef7";
+  const r    = active ? 12 : 7;
+  const size = r * 2 + 10;
+  const c    = r + 5;
+  const html = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      ${active ? `<circle cx="${c}" cy="${c}" r="${r+4}" fill="${col}" opacity="0.15"/>` : ""}
+      <circle cx="${c}" cy="${c}" r="${r}" fill="${col}" stroke="white" stroke-width="2.2"/>
+      ${active ? `<circle cx="${c}" cy="${c}" r="3.5" fill="white" opacity="0.75"/>` : ""}
+    </svg>`;
+  return L.divIcon({ className: "", html, iconSize: [size, size], iconAnchor: [c, c] });
+}
+
+// ── Cell polygon ──────────────────────────────────────────────────────────────
+function drawCellPolygon(sc) {
+  if (cellPolygon) { map.removeLayer(cellPolygon); cellPolygon = null; }
+  if (!sc.polygon) return;
+  const isAnom = sc.type === "ANOMALY";
+  const pts = sc.polygon.map(p => [p.lat, p.lon]);
+  cellPolygon = L.polygon(pts, {
+    color:       isAnom ? "#f05a5a" : "#4f8ef7",
+    fillColor:   isAnom ? "#f05a5a" : "#4f8ef7",
+    fillOpacity: 0.12,
+    weight: 1.5,
+    dashArray: "3,3",
+  }).addTo(map);
+}
+
+// ── Popup HTML ────────────────────────────────────────────────────────────────
+function makePopup(sc, kmh) {
+  const isAnom  = sc.type === "ANOMALY";
+  const decCol  = sc.decision === "BLOCK" ? "danger" : "ok";
+  const kmhCol  = kmh > 900 ? "danger" : "ok";
+  return `
+    <div class="pop-title ${isAnom ? "pop-block" : ""}" style="color:${isAnom ? "var(--danger)" : "var(--ok)"}">
+      ${isAnom ? "🚨" : "✅"} ${sc.label}
+    </div>
+    <div class="pop-row"><span class="pop-k">step</span>     <span class="pop-v">${sc.step} / ${SCENARIOS.length}</span></div>
+    <div class="pop-row"><span class="pop-k">cellId</span>   <span class="pop-v">${sc.cellId}</span></div>
+    <div class="pop-row"><span class="pop-k">lat / lon</span><span class="pop-v">${sc.lat.toFixed(5)}, ${sc.lon.toFixed(5)}</span></div>
+    <div class="pop-row"><span class="pop-k">grid x,y</span> <span class="pop-v">${sc.x}, ${sc.y}</span></div>
+    <div class="pop-row"><span class="pop-k">day / slot</span><span class="pop-v">${sc.day} / ${sc.timeslot}</span></div>
+    <div class="pop-row"><span class="pop-k">uid</span>      <span class="pop-v">${sc.uid}</span></div>
+    <div class="pop-row"><span class="pop-k">dataset</span>  <span class="pop-v">${sc.dataset}</span></div>
+    ${sc.dist_km > 0 ? `<div class="pop-row"><span class="pop-k">distance</span><span class="pop-v">${sc.dist_km.toFixed(2)} km</span></div>` : ""}
+    ${kmh > 0 ? `<div class="pop-row"><span class="pop-k">speed est.</span><span class="pop-v ${kmhCol}">${kmh.toLocaleString()} km/h ${kmh > 900 ? "⚡ IMPOSSIBLE" : ""}</span></div>` : ""}
+    <hr class="pop-hr">
+    <div class="pop-row">
+      <span class="pop-k">suspicious</span>
+      <span class="pop-v ${sc.suspicious ? "danger" : "ok"}">${sc.suspicious ? "true" : "false"}</span>
+    </div>
+    <div class="pop-row">
+      <span class="pop-k">decision</span>
+      <span class="pop-v ${decCol}">${sc.decision}</span>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIMULATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let currentStep = -1;
+let stepMs      = 1600;
+let simTimer    = null;
+let paused      = false;
+
+function buildStepList() {
+  document.getElementById("step-list").innerHTML = SCENARIOS.map((sc, i) => `
+    <div class="step-item" id="si-${i}">
+      <b>${sc.type === "ANOMALY" ? "🚨" : "📍"} ${sc.label}</b>
+      <small>lat ${sc.lat.toFixed(5)} · lon ${sc.lon.toFixed(5)} · ${sc.dist_km > 0 ? sc.dist_km.toFixed(2)+" km" : "start"}</small>
+    </div>`).join("");
+}
+
+function resetSim() {
+  clearTimeout(simTimer);
+  paused = false; currentStep = -1;
+
+  if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
+  pastMarkers.forEach(m => map.removeLayer(m)); pastMarkers = [];
+  if (cellPolygon)  { map.removeLayer(cellPolygon); cellPolygon = null; }
+  trailN.setLatLngs([]);
+  trailA.setLatLngs([]);
+
+  // Re-center on first scenario point if data loaded
+  if (SCENARIOS.length > 0) {
+    map.setView([SCENARIOS[0].lat, SCENARIOS[0].lon], 12, { animate: true });
+  }
+
+  document.getElementById("btn-start").textContent = "▶ Start";
+  document.getElementById("btn-start").style.display = "";
+  document.getElementById("btn-pause").style.display = "none";
+  document.getElementById("info-box").innerHTML =
+    '<span style="color:var(--muted)">Press ▶ Start to begin the simulation.</span>';
+  document.getElementById("db-dot").className   = "dot";
+  document.getElementById("db-label").textContent = "Waiting";
+  document.getElementById("ts-display").textContent = "";
+
+  buildStepList();
+  document.querySelectorAll(".step-item").forEach(el => el.className = "step-item");
+}
+
+function startSim() {
+  if (SCENARIOS.length === 0) return;
+  if (paused) {
+    paused = false;
+    document.getElementById("btn-pause").style.display = "";
+    document.getElementById("btn-start").style.display = "none";
+    simTimer = setTimeout(runStep, stepMs);
+    return;
+  }
+  resetSim();
+  document.getElementById("btn-start").style.display = "none";
+  document.getElementById("btn-pause").style.display = "";
+  simTimer = setTimeout(runStep, 350);
+}
+
+function pauseSim() {
+  paused = true; clearTimeout(simTimer);
+  document.getElementById("btn-pause").style.display = "none";
+  document.getElementById("btn-start").textContent = "▶ Resume";
+  document.getElementById("btn-start").style.display = "";
+}
+
+function runStep() {
+  currentStep++;
+  if (currentStep >= SCENARIOS.length) {
+    document.getElementById("btn-pause").style.display = "none";
+    document.getElementById("info-box").innerHTML =
+      '<span style="color:var(--ok)">✅ Simulation complete.</span>';
+    document.getElementById("db-label").textContent = "Done";
+    return;
+  }
+
+  const sc     = SCENARIOS[currentStep];
+  const isAnom = sc.type === "ANOMALY";
+  const latlng = [sc.lat, sc.lon];
+
+  // ── Compute estimated speed based on wall-clock step delay ───────────────
+  const kmh = (currentStep > 0 && sc.dist_km > 0)
+    ? Math.round((sc.dist_km / (stepMs / 1000)) * 3600)
+    : 0;
+
+  // ── Trail ────────────────────────────────────────────────────────────────
+  if (currentStep > 0) {
+    const prev = SCENARIOS[currentStep - 1];
+    if (isAnom) {
+      trailA.addLatLng([prev.lat, prev.lon]);
+      trailA.addLatLng(latlng);
+    } else {
+      trailN.addLatLng(latlng);
+    }
+  } else {
+    trailN.addLatLng(latlng);
+  }
+
+  // ── Cell polygon (500m grid cell) ────────────────────────────────────────
+  drawCellPolygon(sc);
+
+  // ── Markers ──────────────────────────────────────────────────────────────
+  if (activeMarker) {
+    activeMarker.setIcon(makeIcon(SCENARIOS[currentStep - 1].type, false));
+    pastMarkers.push(activeMarker);
+  }
+  activeMarker = L.marker(latlng, { icon: makeIcon(sc.type, true) })
+    .addTo(map)
+    .bindPopup(makePopup(sc, kmh), { maxWidth: 260 })
+    .openPopup();
+
+  // ── Fly to ───────────────────────────────────────────────────────────────
+  map.flyTo(latlng, isAnom ? 9 : 12, { duration: 0.75, easeLinearity: 0.5 });
+
+  // ── Step list ─────────────────────────────────────────────────────────────
+  SCENARIOS.forEach((_, i) => {
+    const el = document.getElementById(`si-${i}`);
+    if (!el) return;
+    el.className = "step-item" +
+      (i < currentStep ? (SCENARIOS[i].type === "ANOMALY" ? " done-a" : " done-n") :
+       i === currentStep ? " active" : "");
+  });
+  document.getElementById(`si-${currentStep}`)
+    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  // ── Info box ──────────────────────────────────────────────────────────────
+  const badge    = isAnom
+    ? '<span class="badge badge-a">ANOMALY</span>'
+    : '<span class="badge badge-n">NORMAL</span>';
+  const spdPct   = Math.min(100, (kmh / 2000) * 100).toFixed(1);
+  const spdColor = kmh > 900 ? "var(--danger)" : "var(--ok)";
+  const decColor = sc.decision === "BLOCK" ? "var(--danger)" : "var(--ok)";
+
+  document.getElementById("info-box").innerHTML = `
+    <div style="margin-bottom:5px">${badge} <b>${sc.label}</b></div>
+    <div><span class="il">cellId</span>${sc.cellId}</div>
+    <div><span class="il">location</span>${sc.lat.toFixed(5)}, ${sc.lon.toFixed(5)}</div>
+    <div><span class="il">grid x,y</span>${sc.x}, ${sc.y}</div>
+    <div><span class="il">uid</span>${sc.uid} &nbsp;·&nbsp; day ${sc.day} slot ${sc.timeslot}</div>
+    <div><span class="il">dataset</span>${sc.dataset}</div>
+    ${sc.dist_km > 0 ? `<div><span class="il">distance</span>${sc.dist_km.toFixed(2)} km from prev</div>` : ""}
+    ${kmh > 0 ? `
+    <div class="spd-bar">
+      <span class="il">speed est.</span>
+      <div class="spd-track"><div class="spd-fill" style="width:${spdPct}%;background:${spdColor}"></div></div>
+      <span style="color:${spdColor};font-weight:600;min-width:110px;text-align:right">${kmh.toLocaleString()} km/h ${kmh > 900 ? "🚨" : ""}</span>
+    </div>` : ""}
+    <div style="margin-top:5px">
+      <span class="il">decision</span>
+      <span style="color:${decColor};font-weight:600">${sc.decision}</span>
+      &nbsp;·&nbsp;
+      suspicious: <span style="color:${sc.suspicious ? "var(--danger)" : "var(--ok)"}">${sc.suspicious}</span>
+    </div>
+    ${isAnom ? `<div style="margin-top:4px;color:var(--danger);font-size:10.5px">⚡ GET /location-analysis → suspicious=true, decision=BLOCK</div>` : ""}
+  `;
+
+  // ── Status bar ────────────────────────────────────────────────────────────
+  document.getElementById("db-dot").className    = `dot ${isAnom ? "err" : "ok"}`;
+  document.getElementById("db-label").textContent = isAnom
+    ? "ANOMALY DETECTED" : `Step ${currentStep + 1}/${SCENARIOS.length}`;
+  document.getElementById("ts-display").textContent =
+    new Date().toLocaleTimeString("en-GB");
+
+  if (!paused) simTimer = setTimeout(runStep, stepMs);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════════════
+(async () => {
+  const ok = await loadData();
+  if (ok) buildStepList();
+})();
+</script>
+</body>
+</html>

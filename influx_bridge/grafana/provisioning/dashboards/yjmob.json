@@ -1,0 +1,180 @@
+{
+  "title": "YJMob — Anomali İzleme",
+  "uid": "yjmob-geomap",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cihaz Konumları",
+      "type": "geomap",
+      "gridPos": { "h": 18, "w": 16, "x": 0, "y": 0 },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 35.72,
+          "lon": 139.78,
+          "zoom": 9
+        },
+        "controls": { "showZoom": true, "mouseWheelZoom": true },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Konumlar",
+            "config": {
+              "style": {
+                "color": {
+                  "fixed": "green",
+                  "field": "anomaly",
+                  "mode": "thresholds"
+                },
+                "size": { "fixed": 10 },
+                "symbol": { "fixed": "img/icons/marker/circle.svg" },
+                "fillOpacity": 0.8
+              },
+              "showLegend": true
+            },
+            "location": {
+              "mode": "coords",
+              "latitude": "lat",
+              "longitude": "lon"
+            },
+            "tooltip": true
+          }
+        ],
+        "basemap": {
+          "type": "default",
+          "name": "OpenStreetMap"
+        },
+        "tooltip": { "mode": "details" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "anomaly" },
+            "properties": [
+              { "id": "displayName", "value": "Anomali" }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"location_events\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"location\")\n  |> last()\n  |> pivot(rowKey: [\"msisdn\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"msisdn\", \"lat\", \"lon\", \"anomaly\", \"cellId\", \"_time\"])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Toplam Anomali (son 15 dk)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": { "calcs": ["sum"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"location_events\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"location\" and r._field == \"anomaly\" and r._value == 1.0)\n  |> count()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Aktif Cihaz Sayısı",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["uniqueValues"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"location_events\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"location\" and r._field == \"lat\")\n  |> keep(columns: [\"msisdn\"])\n  |> distinct(column: \"msisdn\")\n  |> count()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Hız Zaman Serisi (km/h)",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 20, "x": 0, "y": 18 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 900 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "query": "from(bucket: \"location_events\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"location\" and r._field == \"speed_kmh\")\n  |> group(columns: [\"msisdn\"])",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "type": "datasource",
+      "pluginId": "influxdb"
+    }
+  ],
+  "__requires": [
+    { "type": "datasource", "id": "influxdb", "version": "1.0.0" },
+    { "type": "panel",      "id": "geomap",   "version": "" },
+    { "type": "panel",      "id": "stat",     "version": "" },
+    { "type": "panel",      "id": "timeseries","version": "" }
+  ]
+}
