@@ -272,6 +272,8 @@ Create a python `venv` and install `requirements.txt` to execute the `python scr
   }
 }
 
+---
+
 ## 🧩 Sequence Flow Diagram
 ```mermaid
 sequenceDiagram
